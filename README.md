@@ -6,8 +6,8 @@
 |---|---|
 | **Project Name** | SDA-Pro — Security Incident Response & Threat Mitigation Platform |
 | **Team Members** | Hassan Zahid (54481) · Malik Hamza Shahid (54523) |
-| **Submission Date** | 29th May 2026 |
-| **Language** | Java (plain — no framework dependencies) |
+| **Submission Date** |3rd june 2026 |
+| **Language** | Java  |
 
 ---
 
