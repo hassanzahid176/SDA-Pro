@@ -1,0 +1,137 @@
+============================================================
+  SDA-Pro -- Security Incident Response & Threat Mitigation Platform
+  Software Design & Architecture -- Semester Project
+  Team: Hassan Zahid (54481) | Malik Hamza Shahid (54523)
+============================================================
+
+--- STEP 1: Alert Ingestion from 3 Sources (Adapter + Factory Method) ---
+[Adapter] Pulling SIEM alert from SDA-Pro Splunk mock connector...
+[Factory Method] SIEM normalizer mapped raw login data to CanonicalAlert.
+[Observer] Publishing event -> ALERT_INGESTED: Alert ingested from Splunk SIEM
+[DashboardUpdater] Live dashboard refresh: Alert ingested from Splunk SIEM
+[Adapter] Pulling perimeter alert from SDA-Pro firewall mock connector...
+[Factory Method] Firewall normalizer mapped network event to CanonicalAlert.
+[Observer] Publishing event -> ALERT_INGESTED: Alert ingested from Palo Alto Firewall
+[DashboardUpdater] Live dashboard refresh: Alert ingested from Palo Alto Firewall
+[Adapter] Pulling EDR alert from SDA-Pro CrowdStrike mock connector...
+[Factory Method] CrowdStrikeNormalizer converted raw alert to CanonicalAlert.
+[Observer] Publishing event -> ALERT_INGESTED: Alert ingested from CrowdStrike EDR
+[DashboardUpdater] Live dashboard refresh: Alert ingested from CrowdStrike EDR
+
+--- STEP 2: Composite Grouping -- Campaign + IncidentCluster ---
+[Composite] Added alert to campaign: Multi-Vector APT Campaign: SDA-Pro
+[Composite] Added alert to campaign: Multi-Vector APT Campaign: SDA-Pro
+[Composite] Added alert to campaign: Multi-Vector APT Campaign: SDA-Pro
+  AlertCampaign: Multi-Vector APT Campaign: SDA-Pro severity=HIGH
+    SingleAlert: CanonicalAlert{SENT-ALERT-SIEM-204, SPLUNK, severity=HIGH, src=203.0.113.45}
+    SingleAlert: CanonicalAlert{SENT-ALERT-FW-204, FIREWALL, severity=MEDIUM, src=91.240.118.23}
+    SingleAlert: CanonicalAlert{SENT-ALERT-EDR-204, CROWDSTRIKE, severity=HIGH, src=10.10.5.42}
+
+--- STEP 3: Enrichment Pipeline (Abstract Factory + Chain of Responsibility) ---
+[AbstractFactory] Using PremiumEnrichmentFactory for CRITICAL pipeline.
+[AbstractFactory] PremiumEnrichmentFactory: creating Premium GeoIPHandler
+[AbstractFactory] PremiumEnrichmentFactory: creating ThreatIntelHandler with VirusTotal + CachingProxy
+[AbstractFactory] PremiumEnrichmentFactory: creating Premium AssetContextHandler
+[Chain] Starting enrichment pipeline...
+[Chain] DeduplicationHandler: unique alert group confirmed for SENT-CMP-204
+[Chain] GeoIPHandler: IP 203.0.113.45 mapped to external suspicious network zone.
+[Proxy] Cache miss. Querying external reputation adapter...
+[Adapter] VirusTotalAdapter reputation lookup for: 203.0.113.45
+[Chain] ThreatIntelHandler: ReputationResult{203.0.113.45, score=92, verdict='MALICIOUS'}
+[Chain] AssetContextHandler: affected asset marked BUSINESS-CRITICAL.
+[Chain] ClassificationHandler: severity recalculated as CRITICAL.
+[Observer] Publishing event -> ALERT_ENRICHED: Alert enrichment completed
+[DashboardUpdater] Live dashboard refresh: Alert enrichment completed
+
+[AbstractFactory] Switching to StandardEnrichmentFactory for secondary pipeline demo.
+[AbstractFactory] StandardEnrichmentFactory: creating Standard GeoIPHandler
+[AbstractFactory] StandardEnrichmentFactory: creating ThreatIntelHandler with MISP + CachingProxy
+[AbstractFactory] StandardEnrichmentFactory: creating Standard AssetContextHandler
+[Chain] Starting enrichment pipeline...
+[Chain] DeduplicationHandler: unique alert group confirmed for SENT-CLU-204
+[Chain] GeoIPHandler: IP 91.240.118.23 mapped to external suspicious network zone.
+[Proxy] Cache miss. Querying external reputation adapter...
+[Adapter] MISPAdapter reputation lookup for: 91.240.118.23
+[Chain] ThreatIntelHandler: ReputationResult{91.240.118.23, score=84, verdict='MALICIOUS'}
+[Chain] AssetContextHandler: affected asset marked BUSINESS-CRITICAL.
+[Chain] ClassificationHandler: severity recalculated as CRITICAL.
+[Observer] Publishing event -> ALERT_ENRICHED: Alert enrichment completed
+[DashboardUpdater] Live dashboard refresh: Alert enrichment completed
+
+--- STEP 4: Incident Creation and State Lifecycle (State Pattern) ---
+[State] Incident created in NewState.
+[Observer] Publishing event -> INCIDENT_CREATED: Incident created: INC-001
+[DashboardUpdater] Live dashboard refresh: Incident created: INC-001
+[AuditLogger] Immutable audit entry saved: INCIDENT_CREATED: Incident created: INC-001
+[State] NewState -> UnderTriageState
+[State] UnderTriageState -> ContainmentState
+
+--- STEP 5: Response Orchestration (Facade + Strategy + Decorator + Proxy) ---
+[Facade] Coordinating SDA-Pro response workflow for INC-001
+[Strategy] Aggressive Containment selected for CRITICAL incident.
+[Proxy] Checking authorization for role: SOC_MANAGER
+[Decorator] ApprovalGateDecorator: approval granted.
+[Decorator] AuditLogDecorator: pre-action audit log.
+[Decorator] RollbackDecorator: rollback snapshot saved.
+[Action] Blocking malicious IP: 203.0.113.45
+[Decorator] AuditLogDecorator: post-action audit log.
+[Decorator] MetricsDecorator: action took 3 ms.
+[Observer] Publishing event -> RESPONSE_ACTION_EXECUTED: Response action executed: BlockIPAction -> SUCCESS (Executed on 203.0.113.45)
+[DashboardUpdater] Live dashboard refresh: Response action executed: BlockIPAction -> SUCCESS (Executed on 203.0.113.45)
+[AuditLogger] Immutable audit entry saved: RESPONSE_ACTION_EXECUTED: Response action executed: BlockIPAction -> SUCCESS (Executed on 203.0.113.45)
+[NotificationDispatcher] Analyst notification dispatched for event: RESPONSE_ACTION_EXECUTED
+[MetricsCollector] SOC metric counter updated for: RESPONSE_ACTION_EXECUTED
+[Proxy] Checking authorization for role: SOC_MANAGER
+[Decorator] ApprovalGateDecorator: approval granted.
+[Decorator] AuditLogDecorator: pre-action audit log.
+[Decorator] RollbackDecorator: rollback snapshot saved.
+[Action] Isolating endpoint: 203.0.113.45
+[Decorator] AuditLogDecorator: post-action audit log.
+[Decorator] MetricsDecorator: action took 1 ms.
+[Observer] Publishing event -> RESPONSE_ACTION_EXECUTED: Response action executed: IsolateEndpointAction -> SUCCESS (Executed on 203.0.113.45)
+[DashboardUpdater] Live dashboard refresh: Response action executed: IsolateEndpointAction -> SUCCESS (Executed on 203.0.113.45)
+[AuditLogger] Immutable audit entry saved: RESPONSE_ACTION_EXECUTED: Response action executed: IsolateEndpointAction -> SUCCESS (Executed on 203.0.113.45)
+[NotificationDispatcher] Analyst notification dispatched for event: RESPONSE_ACTION_EXECUTED
+[MetricsCollector] SOC metric counter updated for: RESPONSE_ACTION_EXECUTED
+[Proxy] Checking authorization for role: SOC_MANAGER
+[Decorator] ApprovalGateDecorator: approval granted.
+[Decorator] AuditLogDecorator: pre-action audit log.
+[Decorator] RollbackDecorator: rollback snapshot saved.
+[Action] Quarantining malicious file on: 203.0.113.45
+[Decorator] AuditLogDecorator: post-action audit log.
+[Decorator] MetricsDecorator: action took 2 ms.
+[Observer] Publishing event -> RESPONSE_ACTION_EXECUTED: Response action executed: QuarantineFileAction -> SUCCESS (File quarantined on 203.0.113.45)
+[DashboardUpdater] Live dashboard refresh: Response action executed: QuarantineFileAction -> SUCCESS (File quarantined on 203.0.113.45)
+[AuditLogger] Immutable audit entry saved: RESPONSE_ACTION_EXECUTED: Response action executed: QuarantineFileAction -> SUCCESS (File quarantined on 203.0.113.45)
+[NotificationDispatcher] Analyst notification dispatched for event: RESPONSE_ACTION_EXECUTED
+[MetricsCollector] SOC metric counter updated for: RESPONSE_ACTION_EXECUTED
+[State] ContainmentState -> EradicationState
+[State] EradicationState -> RecoveryState
+[State] RecoveryState -> PostIncidentReviewState
+[State] PostIncidentReviewState -> ClosedState
+
+--- STEP 6: MVC Dashboard Output ---
+========== SDA-Pro DASHBOARD (MVC View) ==========
+SDA-Pro started. Monitoring enterprise security alerts...
+Incident INC-001 completed with state: Closed
+====================================================
+
+--- STEP 7: Proxy Cache Verification (Caching + Rate Limit + Access Control Proxies) ---
+[AbstractFactory] PremiumEnrichmentFactory: creating Premium GeoIPHandler
+[AbstractFactory] PremiumEnrichmentFactory: creating ThreatIntelHandler with VirusTotal + CachingProxy
+[AbstractFactory] PremiumEnrichmentFactory: creating Premium AssetContextHandler
+[Chain] Starting enrichment pipeline...
+[Chain] DeduplicationHandler: unique alert group confirmed for SENT-CMP-204
+[Chain] GeoIPHandler: IP 203.0.113.45 mapped to external suspicious network zone.
+[Proxy] Cached reputation found for indicator: 203.0.113.45
+[Chain] ThreatIntelHandler: ReputationResult{203.0.113.45, score=92, verdict='MALICIOUS'}
+[Chain] AssetContextHandler: affected asset marked BUSINESS-CRITICAL.
+[Chain] ClassificationHandler: severity recalculated as CRITICAL.
+[Observer] Publishing event -> ALERT_ENRICHED: Alert enrichment completed
+[DashboardUpdater] Live dashboard refresh: Alert enrichment completed
+
+============================================================
+  SDA-Pro demo completed successfully.
+  All 12 design patterns demonstrated. All 4 architecture styles applied.
+  Team: Hassan Zahid (54481) | Malik Hamza Shahid (54523)
+============================================================

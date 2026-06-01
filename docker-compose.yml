@@ -1,0 +1,4 @@
+services:
+  sda-pro:
+    build: .
+    container_name: sda-pro-demo
